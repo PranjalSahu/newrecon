@@ -14,10 +14,8 @@ mu_carci= 0.844;% carcinoma 0.392 @30keV; 0.844 @20keV;
 mu_ca   = 1.2; %calcification
 
 
-load example_data/breast_phantom0.mat; %the variable name is 'x'
-load /media/pranjal/2393b3cd-4abd-4e15-b5bf-9297de7e0f10/pranjal/attenuation_values/1.mat;
+load /media/dril/ubuntudata/attenuation_values_cropped/1.mat;
 x = head;
-x = permute(x, [1, 3, 2]);
 
 %downsample to run faster
 down = 2;
@@ -26,7 +24,7 @@ x    = downsample3(x, down);
 %===============================    
 %Define the object geometry
 %===============================
-[nx,ny,nz]=size(x);%phantom dimensions
+[nx,ny,nz] = size(x);%phantom dimensions
 dx   = 0.02*down; dy=0.02*down; dz=0.02*down; %in cm, phantom pixel sizes
 xfov = dx*nx; %20;
 yfov = dy*ny;
@@ -49,13 +47,13 @@ d_objbottom_det = 0; %in cm,the distance from the bottom of the object to the ce
  orbit = 50;  %angular span
  na = 25; %number of projection views
  ds = dx; % in cm; detector pixel size
- dt= dx;
+ dt = dx;
  %calculate the length and width of the detector so it is large enough to cover the
  %projection views from the most oblique angles.
  %costheta=cos(orbit/2*pi/180); sintheta=sin(orbit/2*pi/180);
  %sfov = ((dso*costheta+dod)*(xfov/2+dso*sintheta)/(dso*costheta+offset_z*dz-zfov/2) - dso*sintheta)*2;
  %tfov = yfov*(dso*costheta+dod)/(dso*costheta+dod-zfov);
- ns = 600;%ceil(sfov/ds);
+ ns = 800;%ceil(sfov/ds);
  nt = 300;%ceil(tfov/dt);
 
  offset_s = 0; %detector center offset along the 's' direction in pixels relative to the tube rotation center
@@ -79,7 +77,7 @@ ig = image_geom('nx', nx, 'ny',ny, 'nz', nz, 'dx',dx, 'dz', dz,...
 Gt = Gtomo_syn(btg,ig); %generate system Fatrix
 
 %add a spherical lesion to the phantom
-if(1)
+if(0)
     rx=dx*8; ry=dy*8; rz=dz*4;%lesion radius
     %define the geometric properties of a sphere
     %ell=[xctr, yctr, zctr, rx, ry, rz, alpha, beta, attenuation];

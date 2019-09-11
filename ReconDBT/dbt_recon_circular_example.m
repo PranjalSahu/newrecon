@@ -47,12 +47,12 @@ proj= proj_noi;
 % FOV center offsets (offset_x, offset_y, offset_z): in pixels relative to the rotation center.
 % For example, if the coordinates of the FOV center is (xctr, yctr, zctr) relative tothe rotation center,
 % then offset_x=-xctr, offset_y=-yctr and offset_z=-zctr.
-nrx      = 402;
-nry      = 240;
+nrx      = 400;
+nry      = 224;
 drx      = 0.04;  
 dry      = drx; 
 drz      = 0.04; 
-nrz      = 175; 
+nrz      = 160; 
 offset_x = 0; %in pixels
 offset_y = -nry/2;% in pixels. 0 for full cone, -nry/2 for half cone
 zfov     = nrz*drz;
@@ -84,13 +84,13 @@ Gtr = Gtomo_syn(btg,igr);
 %xfbp = fbp_dbt(Gtr,btg,igr, g,'hann75');
 
 % SART reconstruction
-%xbp = BP(Gtr, g); % initialization for SART
-%disp(size(xbp));
+xbp = BP(Gtr, g); % initialization for SART
+disp(size(xbp));
 
 disp 'SART'
 tic
-%[xartt, costart] = SART_dbt(Gtr, g, xbp, 2, 0.5);
-[xartt, costart] = SART_dbt(Gtr,g,zeros(402, 240, 175),2,0.5);
+[xartt, costart] = SART_dbt(Gtr, g, xbp, 2, 0.15);
+%[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 2, 0.5);
 
 disp 'SART time '
 toc
