@@ -67,6 +67,8 @@ for iter=1:niter
     %     y(isnan(y))=0;
     
          imgi   = G'*y(:);
+         size(imgi)
+         
          denomi = sum(G);
          imgj   = imgi./denomi(:);
          imgj(isnan(imgj))=0;
@@ -74,19 +76,24 @@ for iter=1:niter
          x = x + stepsize*reshape(imgj, size(x));            
     end
     
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Code to extract the elements from matrix given the coordinates
     % 
-    % t1    = [1:numel(x)];              % get coordinate array
-    % t2    = t1+800;
-    % t2(t2 > numel(x)) = 1;
-    % s1 = sparse(index_arr, t1, v1, numel(x), numel(x));
-    % s2 = sparse(index_arr, t2, v1-2, numel(x), numel(x));
+%     t1        = [1:numel(x)];              % get coordinate array
+%     t2        = t1+400;
+%     t2(t2 > numel(x)) = 1;
+%     t         = [t1 t2];
+%     
+%     v1 = zeros([1, numel(x)])+1;
+%     v2 = zeros([1, numel(x)])-1;
+%     v  = [v1 v2];
+%     
+%     index_arr = [1:numel(x)];
+%     index_arr = [index_arr index_arr];
+%     
+%     s = sparse(index_arr, t, v, numel(x), numel(x));
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    % t2    = reshape(t1, size(x));
-    % x1    = reshape(x, [1, numel(x)]); % vectorize the phantom data
-    % temp  = x1(t2);                    % extract the data using the coordinate array
-    % temp1 = reshape(temp, size(x));    % reshape it to original size
-    % imshow(x(1:400, :, 224))           % show the image
     
     x(x<0)=0;
     %calculate the cost
