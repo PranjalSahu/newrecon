@@ -45,6 +45,9 @@ end
 y = zeros(ns,nt);
 x = permute(x0, [1 3 2]);
 
+% get the gradient operator which will be used to reduce the
+% z direction blurring
+s = get_gradient_matrix(x);
 
 for iter=1:niter
     iter
@@ -76,23 +79,7 @@ for iter=1:niter
          x = x + stepsize*reshape(imgj, size(x));            
     end
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Code to extract the elements from matrix given the coordinates
-    % 
-%     t1        = [1:numel(x)];              % get coordinate array
-%     t2        = t1+400;
-%     t2(t2 > numel(x)) = 1;
-%     t         = [t1 t2];
-%     
-%     v1 = zeros([1, numel(x)])+1;
-%     v2 = zeros([1, numel(x)])-1;
-%     v  = [v1 v2];
-%     
-%     index_arr = [1:numel(x)];
-%     index_arr = [index_arr index_arr];
-%     
-%     s = sparse(index_arr, t, v, numel(x), numel(x));
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     
     
     x(x<0)=0;
