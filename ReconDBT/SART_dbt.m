@@ -1,4 +1,4 @@
-function [img,cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
+function [img,cost,diff_image_final] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % function [img, cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % SART reconstruction for DBT.
 % Inputs:
@@ -21,6 +21,9 @@ function [img,cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 %   cost: a niterx1 vector containing the cost function value at each iteration
 %
 
+
+load mask.mat;
+
 if(nargin<6)
     saveiter=0;
 end
@@ -42,8 +45,11 @@ else
     img=zeros([size(x0) 1]);
 end
 
-y = zeros(ns,nt);
-x = permute(x0, [1 3 2]);
+diff_image_final = zeros(size(proj, 1), size(proj, 2), 25);
+
+y    = zeros(ns,nt);
+x    = permute(x0, [1 3 2]);
+mask = permute(mask, [1 3 2]);
 
 % get the gradient operator which will be used to reduce the
 % z direction blurring
@@ -70,13 +76,15 @@ for iter=1:niter
     %     y(isnan(y))=0;
     
          imgi   = G'*y(:);
-         size(imgi)
          
          denomi = sum(G);
          imgj   = imgi./denomi(:);
          imgj(isnan(imgj))=0;
          
-         x = x + stepsize*reshape(imgj, size(x));            
+         x = x + stepsize*reshape(imgj, size(x));
+         %disp(size(x));
+         %disp(size(mask));
+         x = x.*mask;
     end
     
     
@@ -87,8 +95,9 @@ for iter=1:niter
     if(nargout>1)
         mse=0;
         for i=1:nview
-            pdif   = proj(:,:,i)-Gt{i}*x;
-            mse    = mse + sum(pdif(:).^2);
+            pdif                = proj(:,:,i)-Gt{i}*x;
+            mse                 = mse + sum(pdif(:).^2);
+            diff_image_final(:, :, i) = pdif;
         end
         cost(iter)=mse;
     end

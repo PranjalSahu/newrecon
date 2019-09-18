@@ -1,4 +1,4 @@
-function [img,cost] = SART_dbt_z(Gt,proj,x0,deep,niter,stepsize,saveiter)
+function [img,cost,diff_image_final] = SART_dbt_z(Gt,proj,x0,deep,niter,stepsize,saveiter)
 % function [img, cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % SART reconstruction for DBT.
 % Inputs:
@@ -42,6 +42,10 @@ else
     img=zeros([size(x0) 1]);
 end
 
+
+diff_image_final = zeros(size(proj, 1), size(proj, 2), 25);
+
+
 y    = zeros(ns,nt);
 x    = permute(x0, [1 3 2]);
 
@@ -81,14 +85,20 @@ for iter=1:niter
          
          x1         = double(reshape(x, [numel(x), 1]));
          gradz_diff = S*deep - S*x1;
-         gradz_vol  = S'*gradz_diff;
-         
          disp('max is ');
-         disp(max(gradz_diff, [], 'all'));
+         disp(max(abs(gradz_diff), [], 'all'));
          
-         lambda_val = 0.01;
+         
+         gradz_vol  = S'*gradz_diff;
+         gradz_vol(gradz_vol > 1) = 1;
+         
+         %disp('mean is ');
+         %disp(mean(gradz_diff, 'all'));
+         
+         lambda_val = 0.5;
          
          x = x + stepsize*((1-lambda_val)*reshape(imgj, size(x)) + lambda_val*reshape(gradz_vol, size(x)));
+         %x = x + stepsize*(1-lambda_val)*reshape(imgj, size(x));
     end
     
     
@@ -101,6 +111,7 @@ for iter=1:niter
         for i=1:nview
             pdif   = proj(:,:,i)-Gt{i}*x;
             mse    = mse + sum(pdif(:).^2);
+            diff_image_final(:, :, i) = pdif;
         end
         cost(iter)=mse;
     end
