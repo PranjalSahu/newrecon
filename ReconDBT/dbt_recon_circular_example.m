@@ -13,6 +13,15 @@
 load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
 g   = g_noi;
+
+nview = size(g, 3);
+for i=1:nview
+    temp = g(:, :, i);
+    t    = graythresh(temp);
+    temp(temp < t) = 0;
+    g(:, :, i) = temp;  
+end
+
 proj= proj_noi;
 %==================================
 %User Defines the scanner geometry
@@ -84,18 +93,21 @@ Gtr = Gtomo_syn(btg,igr);
 %xfbp = fbp_dbt(Gtr,btg,igr, g,'hann75');
 
 % SART reconstruction
-xbp = BP(Gtr, g); % initialization for SART
-disp(size(xbp));
+%xbp = BP(Gtr, g); % initialization for SART
+%disp(size(xbp));
 
 disp 'SART'
 tic
-[xartt, costart] = SART_dbt(Gtr, g, xbp, 2, 0.15);
-%[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 2, 0.5);
+
+[xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep, deep, mask1, 5, 0.25);
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(400, 224, 160), 5, 0.25, 1);
+%[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 5, 0.15);
 
 disp 'SART time '
 toc
 % ML recosntruction
 % disp 'ML'
+
 % tic
 % [xmlt, costml] = ML_dbt(Gtr,proj,xbp,I0,3,2);
 % disp 'ML time'
@@ -105,7 +117,7 @@ disp 'Recon completed';
 
 
 figure('Name', 'dbr_recon_circular_example');
-imagesc(xartt(end:-1:1,:,30)), daspect([1 1 1]), colormap(gray)
+imagesc(xartt(:,:, 80)), daspect([1 1 1]), colormap(gray)
 title 'Slice 30 (lesion focal plane) of SART reconstruction'
 colorbar;
 

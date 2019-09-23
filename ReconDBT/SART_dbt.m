@@ -1,4 +1,4 @@
-function [img,cost,diff_image_final] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
+function [img, cost, diff_image_final, back_proj_images] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % function [img, cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % SART reconstruction for DBT.
 % Inputs:
@@ -45,6 +45,7 @@ else
     img=zeros([size(x0) 1]);
 end
 
+back_proj_images = zeros(400, 160, 224, 25);
 diff_image_final = zeros(size(proj, 1), size(proj, 2), 25);
 
 y    = zeros(ns,nt);
@@ -79,12 +80,14 @@ for iter=1:niter
          
          denomi = sum(G);
          imgj   = imgi./denomi(:);
-         imgj(isnan(imgj))=0;
+         imgj(isnan(imgj)) = 0;
          
-         x = x + stepsize*reshape(imgj, size(x));
+         back_proj                    = reshape(imgj, size(x));
+         back_proj_images(:, :, :, i) = back_proj;
+         x                            = x + stepsize*back_proj;
          %disp(size(x));
          %disp(size(mask));
-         x = x.*mask;
+         %x = x.*mask;
     end
     
     

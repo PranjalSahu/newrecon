@@ -1,4 +1,5 @@
-function [img,cost,diff_image_final] = SART_dbt_z(Gt,proj,x0,deep,niter,stepsize,saveiter)
+function [img,cost,diff_image_final] = SART_dbt_z(Gt, proj, x0, deep, mask1, niter, stepsize, saveiter)
+
 % function [img, cost] = SART_dbt(Gt,proj,x0,niter,stepsize,saveiter)
 % SART reconstruction for DBT.
 % Inputs:
@@ -21,7 +22,7 @@ function [img,cost,diff_image_final] = SART_dbt_z(Gt,proj,x0,deep,niter,stepsize
 %   cost: a niterx1 vector containing the cost function value at each iteration
 %
 
-if(nargin<7)
+if(nargin<8)
     saveiter=0;
 end
 nview =length(Gt);
@@ -42,12 +43,15 @@ else
     img=zeros([size(x0) 1]);
 end
 
+load mask.mat;
 
 diff_image_final = zeros(size(proj, 1), size(proj, 2), 25);
 
 
-y    = zeros(ns,nt);
-x    = permute(x0, [1 3 2]);
+y     = zeros(ns,nt);
+x     = permute(x0, [1 3 2]);
+mask1 = permute(mask1, [1 3 2]);
+
 
 % For taking the gradient along the z direction
 deep = double(permute(deep, [1 3 2]));
@@ -83,22 +87,29 @@ for iter=1:niter
          imgj   = imgi./denomi(:);
          imgj(isnan(imgj)) = 0;
          
-         x1         = double(reshape(x, [numel(x), 1]));
-         gradz_diff = S*deep - S*x1;
-         disp('max is ');
-         disp(max(abs(gradz_diff), [], 'all'));
          
          
-         gradz_vol  = S'*gradz_diff;
-         gradz_vol(gradz_vol > 1) = 1;
          
-         %disp('mean is ');
-         %disp(mean(gradz_diff, 'all'));
          
-         lambda_val = 0.5;
+         %x1         = double(reshape(x, [numel(x), 1]));
+         %gradz_diff = S*deep - S*x1;
+         %disp('max is ');
+         %disp(max(abs(gradz_diff), [], 'all'));
          
-         x = x + stepsize*((1-lambda_val)*reshape(imgj, size(x)) + lambda_val*reshape(gradz_vol, size(x)));
+         
+         %gradz_vol  = S'*gradz_diff;
+         %gradz_vol(gradz_vol > 1) = 1;
+         
+         
+         lambda_val = 0.0;
+         
+         %x = x + stepsize*((1-lambda_val)*reshape(imgj, size(x)) + lambda_val*reshape(gradz_vol, size(x)));
          %x = x + stepsize*(1-lambda_val)*reshape(imgj, size(x));
+         
+         disp(size(reshape(mask1, size(x))))
+         
+         x = x + stepsize*reshape(imgj, size(x))*reshape(mask1, size(x));
+         %x = x.*mask;
     end
     
     
