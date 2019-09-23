@@ -99,11 +99,19 @@ Gtr = Gtomo_syn(btg,igr);
 disp 'SART'
 tic
 
-[xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep, deep, mask1, 5, 0.25);
-%[xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep, deep, mask1, 5, 0.25);
+% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep,  deep,  mask1, 3, 0.9);
+% out1 = xartt;
+% 
+% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, xartt, xartt, mask2, 4, 0.9);
+% out2 = xartt;
+% 
+% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, xartt, xartt, mask3, 4, 0.9);
+% out3 = xartt;
 
 
-%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(400, 224, 160), 5, 0.25, 1);
+
+[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(400, 224, 160), 11, 0.9, 0);
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, deep, 5, 0.9, 0);
 %[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 5, 0.15);
 
 disp 'SART time '
