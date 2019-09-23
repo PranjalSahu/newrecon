@@ -100,6 +100,9 @@ disp 'SART'
 tic
 
 [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep, deep, mask1, 5, 0.25);
+%[xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep, deep, mask1, 5, 0.25);
+
+
 %[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(400, 224, 160), 5, 0.25, 1);
 %[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 5, 0.15);
 
