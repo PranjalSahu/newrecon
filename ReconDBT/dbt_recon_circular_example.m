@@ -14,6 +14,13 @@ load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
 g   = g_noi;
 
+load /media/dril/ubuntudata/DBT-NEW/attenuation_values_cropped/153.mat;
+x    = head;
+down = 2;
+x    = downsample3(x, down);
+
+
+
 nview = size(g, 3);
 for i=1:nview
     temp = g(:, :, i);
@@ -93,26 +100,33 @@ Gtr = Gtomo_syn(btg,igr);
 %xfbp = fbp_dbt(Gtr,btg,igr, g,'hann75');
 
 % SART reconstruction
-%xbp = BP(Gtr, g); % initialization for SART
+xbp = BP(Gtr, g); % initialization for SART
 %disp(size(xbp));
 
 disp 'SART'
 tic
 
-% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, deep,  deep,  mask1, 3, 0.9);
+% [xartt, costart1, diff_image_final1] = SART_dbt_z(Gtr, g, deep,  deep,  mask1, 2, 0.9);
 % out1 = xartt;
 % 
-% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, xartt, xartt, mask2, 4, 0.9);
+% [xartt, costart2, diff_image_final2] = SART_dbt_z(Gtr, g, xartt, xartt, mask2, 5, 0.9);
 % out2 = xartt;
 % 
-% [xartt, costart, diff_image_final] = SART_dbt_z(Gtr, g, xartt, xartt, mask3, 4, 0.9);
+% [xartt, costart3, diff_image_final3] = SART_dbt_z(Gtr, g, xartt, xartt, mask3, 2, 0.9);
 % out3 = xartt;
+% 
+% [xartt, costart4, diff_image_final4] = SART_dbt_z(Gtr, g, xartt, xartt, mask4, 2, 0.9);
+% out4 = xartt;
+% 
+% totalcost = [costart1 costart2 costart3 costart4];
 
+[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, xbp, 12, 0.9, 0);
 
+sliceindex = 80;
+imshow([deep(:, :, sliceindex) out1(:, :, sliceindex) out2(:, :, sliceindex) out3(:, :, sliceindex) out4(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex)]);
 
-[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(400, 224, 160), 11, 0.9, 0);
-%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, deep, 5, 0.9, 0);
-%[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 5, 0.15);
+%imshow([reshape(deep(sliceindex, :, :), [224, 160]) reshape(out1(sliceindex, :, :), [224, 160]) reshape(out2(sliceindex, :, :), [224, 160]) reshape(out3(sliceindex, :, :), [224, 160]) reshape(xartt(sliceindex, :, :), [224, 160]) reshape(x(sliceindex, :, :), [224, 160])]);
+
 
 disp 'SART time '
 toc
@@ -127,10 +141,10 @@ toc
 disp 'Recon completed';
 
 
-figure('Name', 'dbr_recon_circular_example');
-imagesc(xartt(:,:, 80)), daspect([1 1 1]), colormap(gray)
-title 'Slice 30 (lesion focal plane) of SART reconstruction'
-colorbar;
+%figure('Name', 'dbr_recon_circular_example');
+%imagesc(xartt(:,:, 80)), daspect([1 1 1]), colormap(gray)
+%title 'Slice 30 (lesion focal plane) of SART reconstruction'
+%colorbar;
 
 %save fbp_cir.mat xfbp;
 save sart_cir_zero.mat xartt;
