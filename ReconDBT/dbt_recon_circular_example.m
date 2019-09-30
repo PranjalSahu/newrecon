@@ -13,20 +13,11 @@
 
 load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
-g   = g_noi;
-load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/10_input.mat;
 
-g = double(prediction_25);
+load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/11_input.mat;
 
-
+g = double(groundtruth);
 load head.mat;
-%load /media/dril/ubuntudata/DBT-NEW/attenuation_values_cropped/153.mat;
-load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50.mat;
-load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask1.mat;
-load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask2.mat;
-load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask3.mat;
-load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask4.mat;
-
 
 %x    = head;
 %down = 2;
@@ -34,12 +25,12 @@ load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask4.mat;
 nview = size(g, 3);
 
 
-for i=1:nview
-    temp = g(:, :, i);
-    t    = graythresh(temp);
-    temp(temp < t) = 0;
-    g(:, :, i) = temp;  
-end
+%for i=1:nview
+%    temp = g(:, :, i);
+%    t    = graythresh(temp);
+%    temp(temp < t) = 0;
+%    g(:, :, i) = temp;  
+%end
 
 proj = proj_noi;
 %==================================
@@ -51,7 +42,7 @@ proj = proj_noi;
  dsd = dso+dod; %in cm: dist. from source to the detector
 
  
- orbit = 50;     % in degree: angular span
+ orbit = 91.666666;     % in degree: angular span
  na = size(g,3); % number of projection views
  ds = 0.04;      % in cm: detector element pixel size in the 's' direction; 
  dt = 0.04;      % in cm: detector element pixel size in the 's' direction; 
