@@ -14,8 +14,13 @@
 load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
 g   = g_noi;
+load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/0_input.mat;
 
-load /media/dril/ubuntudata/DBT-NEW/attenuation_values_cropped/153.mat;
+g = double(prediction_25);
+
+
+load head.mat;
+%load /media/dril/ubuntudata/DBT-NEW/attenuation_values_cropped/153.mat;
 load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50.mat;
 load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask1.mat;
 load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask2.mat;
@@ -23,9 +28,9 @@ load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask3.mat;
 load /media/dril/ubuntudata/DBT-NEW/deeplearning_output/153_3_hann50_mask4.mat;
 
 
-x    = head;
-down = 2;
-x    = downsample3(x, down);
+%x    = head;
+%down = 2;
+%x    = downsample3(x, down);
 nview = size(g, 3);
 
 
@@ -44,13 +49,14 @@ proj = proj_noi;
  dso = 60.5; %in cm: dist. from the source to the rotation center
  dod = 4.5;  %in cm: dist. from the rotation center to the detector
  dsd = dso+dod; %in cm: dist. from source to the detector
+
  
  orbit = 50;     % in degree: angular span
  na = size(g,3); % number of projection views
  ds = 0.04;      % in cm: detector element pixel size in the 's' direction; 
  dt = 0.04;      % in cm: detector element pixel size in the 's' direction; 
-                 %'s', the x-ray tube moving direction, positive pointing toward right.           
-                 %'t', the perpendicular direction to 's' direction, positive pointing toward the nipple.            
+                 % 's', the x-ray tube moving direction, positive pointing toward right.           
+                 % 't', the perpendicular direction to 's' direction, positive pointing toward the nipple.            
  
  ns       = size(g,1); % number of detector elements in the 's' direction
  nt       = size(g,2); % number of detector elements in the 's' direction
@@ -102,109 +108,116 @@ offset_z = (dod - (zfov/2 + d_objbottom_det-drz/2))/drz; %in pixels: offset of t
     
 Gtr = Gtomo_syn(btg, igr);
 
-%FBP reconstruction
-%disp 'FBP'
-xfbp = fbp_dbt(Gtr, btg, igr, g, 'hann80');
-
-
-% Decompose the volume and get the edge voxels
-t     = wavedec3(deep, 2, 'db1');
-edgep = imbinarize(abs(t.dec{2})+abs(t.dec{3})+abs(t.dec{4})+abs(t.dec{5})+abs(t.dec{6}) + abs(t.dec{7}) + abs(t.dec{8}));
-tmp1  = imresize3(single(edgep), 4, 'nearest');
-
-t          = wavedec3(deep, 3, 'db1');
-edgep      = imbinarize(abs(t.dec{2})+abs(t.dec{3})+abs(t.dec{4})+abs(t.dec{5})+abs(t.dec{6}) + abs(t.dec{7}) + abs(t.dec{8}));
-tmp1       = imresize3(single(edgep), 4, 'nearest');
-totalmask  = imresize3(single(imbinarize(abs(t.dec{1}))), 8, 'nearest');
-fbp_volume_cropped = totalmask.*xfbp;
-
-% Get the mask for the tissues
-t     = wavedec3(fbp_volume_cropped, 3, 'db1');
-
-mask1 = imbinarize(abs(t.dec{1}));
-mask1 = imresize3(single(mask1), 8, 'nearest');
-
-mask2 = imbinarize(abs(t.dec{2})+abs(t.dec{3})+abs(t.dec{4})+abs(t.dec{5})+abs(t.dec{6}) + abs(t.dec{7}) + abs(t.dec{8}));
-mask2 = imresize3(single(mask2), 8, 'nearest');
-
-mask3 = imbinarize(abs(t.dec{9})+abs(t.dec{10})+abs(t.dec{11})+abs(t.dec{12})+abs(t.dec{13}) + abs(t.dec{14}) + abs(t.dec{15}));
-mask3 = imresize3(single(mask3), 4, 'nearest');
-
-mask4 = imbinarize(abs(t.dec{16})+abs(t.dec{17})+abs(t.dec{18})+abs(t.dec{19})+abs(t.dec{20}) + abs(t.dec{21}) + abs(t.dec{22}));
-mask4 = imresize3(single(mask4), 2, 'nearest');
-
-mask5 = mask3+mask4;
-mask5(mask5 ~= 0) = 1;
-
-restmask1                 = mask2 + mask3 + mask4;
-restmask1(restmask1 ~= 0) = 1;
-restmask                  = mask1 - restmask1; 
-
-mask2 = mask2+mask3+mask4;
-mask3 = restmask;
-mask4 = mask5;
-
-disp(size(mask1));
-disp(size(mask2));
-disp(size(mask3));
-disp(size(mask4));
+% FBP reconstruction
+% disp 'FBP'
+xfbp = fbp_dbt(Gtr, btg, igr, g, 'hann50');
 
 
 % SART reconstruction
-xbp = BP(Gtr, g); % initialization for SART
+%xbp = BP(Gtr, g); % initialization for SART
 %disp(size(xbp));
 
-disp 'SART'
-tic
+%xbp = xbp;
 
-total_mask1 = mask1+mask2+mask3+mask4;
-total_mask1(total_mask1 ~= 0) = 1;
+%disp 'SART'
+%tic
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, xbp, 5, 0.9, 1);
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(size(xbp)), 5, 0.9, 1);
 
-%[xartt, costart1, diff_image_final1] = SART_dbt_z(Gtr, g, deep,  deep,  total_mask1, 11, 0.9);
-%out1 = xartt;
+% total_mask1 = mask1+mask2+mask3+mask4;
+% total_mask1(total_mask1 ~= 0) = 1;
+% 
+% 
+% if(1)
+%   [xartt, costart1, diff_image_final1] = SART_dbt_z(Gtr, g, deep,  deep,  total_mask1, 5, 0.25);
+%   out4 = xartt;
+% end
+% 
+% if(0)
+%     mask5 = mask2+mask3;
+%     mask5(mask5~=0) = 1;
+% 
+%     [xartt, costart1, diff_image_final1] = SART_dbt_z(Gtr, g, deep,  deep,  mask1, 3, 0.9);
+%     out1 = xartt;
+% 
+%     %[xartt, costart2, diff_image_final2] = SART_dbt_z(Gtr, g, xartt, xartt, mask5, 1, 0.9);
+%     %out2 = xartt;
+% 
+%     [xartt, costart3, diff_image_final3] = SART_dbt_z(Gtr, g, xartt, xartt, mask5, 3, 0.9);
+%     out3 = xartt;
+% 
+%     [xartt, costart4, diff_image_final4] = SART_dbt_z(Gtr, g, xartt, xartt, mask4, 3, 0.9);
+%     out4 = xartt;
+% 
+%     totalcost = [costart1 costart3 costart4];
+% end
+% 
+% 
+% [xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, xbp, 5, 0.25, 0);
+% 
+% sliceindex = 141;
+% 
+% sliceindex = 130;
+% temp0 = (xfbp(:, :, sliceindex) + xfbp(:, :, sliceindex-1) + xfbp(:, :, sliceindex+1) + xfbp(:, :, sliceindex+2) + xfbp(:, :, sliceindex-2))/5;
+% temp1 = (xartt(:, :, sliceindex) + xartt(:, :, sliceindex-1) + xartt(:, :, sliceindex+1) + xartt(:, :, sliceindex+2) + xartt(:, :, sliceindex-2))/5;
+% imshow([temp0 temp1]);
+% 
 
-[xartt, costart1, diff_image_final1] = SART_dbt_z(Gtr, g, deep,  deep,  mask4, 2, 0.9);
-out1 = xartt;
-
-[xartt, costart2, diff_image_final2] = SART_dbt_z(Gtr, g, xartt, xartt, mask3, 2, 0.9);
-out2 = xartt;
-
-[xartt, costart3, diff_image_final3] = SART_dbt_z(Gtr, g, xartt, xartt, mask2, 2, 0.9);
-out3 = xartt;
-
-%[xartt, costart4, diff_image_final4] = SART_dbt_z(Gtr, g, xartt, xartt, mask4, 2, 0.9);
-%out4 = xartt;
-
-totalcost = [costart1 costart2 costart3];
-
-[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, xbp, 2, 0.9, 0);
+% temp0 = reshape(xfbp_25(sliceindex, :, :), [224, 160]); %(xfbp(:, :, sliceindex) + xfbp(:, :, sliceindex-1) + xfbp(:, :, sliceindex+1) + xfbp(:, :, sliceindex+2) + xfbp(:, :, sliceindex-2))/5;
+% temp1 = reshape(xfbp_35(sliceindex, :, :), [224, 160]); %(xartt(:, :, sliceindex) + xartt(:, :, sliceindex-1) + xartt(:, :, sliceindex+1) + xartt(:, :, sliceindex+2) + xartt(:, :, sliceindex-2))/5;
+% temp2 = reshape(x(sliceindex, :, :), [224, 160]);
+% imshow([temp0 temp1 temp2]);
 
 
-sliceindex = 80;
-imshow([deep(:, :, sliceindex) out1(:, :, sliceindex) out2(:, :, sliceindex) out3(:, :, sliceindex) xfbp(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex)]);
-%imshow([deep(:, :, sliceindex) out1(:, :, sliceindex) out2(:, :, sliceindex) out3(:, :, sliceindex) out4(:, :, sliceindex) xfbp(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex)]);
-%imshow([reshape(deep(sliceindex, :, :), [224, 160]) reshape(out1(sliceindex, :, :), [224, 160]) reshape(out2(sliceindex, :, :), [224, 160]) reshape(out3(sliceindex, :, :), [224, 160]) reshape(xartt(sliceindex, :, :), [224, 160]) reshape(x(sliceindex, :, :), [224, 160])]);
+% temp0 = (xfbp_25(:, :, sliceindex) + xfbp_25(:, :, sliceindex-1) + xfbp_25(:, :, sliceindex+1) + xfbp_25(:, :, sliceindex+2) + xfbp_25(:, :, sliceindex-2))/5;
+% temp1 = (xfbp_35(:, :, sliceindex) + xfbp_35(:, :, sliceindex-1) + xfbp_35(:, :, sliceindex+1) + xfbp_35(:, :, sliceindex+2) + xfbp_35(:, :, sliceindex-2))/5;
+% temp2 = (xfbp_45(:, :, sliceindex) + xfbp_45(:, :, sliceindex-1) + xfbp_45(:, :, sliceindex+1) + xfbp_45(:, :, sliceindex+2) + xfbp_45(:, :, sliceindex-2))/5;
+% temp3 = (x(:, :, sliceindex) + x(:, :, sliceindex-1) + x(:, :, sliceindex+1) + x(:, :, sliceindex+2) + x(:, :, sliceindex-2))/5;
+% imshow([temp0 temp1 temp2 temp3]);
 
+% 
+% 
+% imshow([reshape(temp0(200, :,  :), [224, 160])  reshape(temp1(200, :,  :), [224, 160])])
+% 
+% 
+% imshow([reshape(g(:, :, 1), [800, 300]) reshape(g(:, :, 6), [800, 300]) reshape(g(:, :, 30), [800, 300]) reshape(g(:, :, 35), [800, 300])]);
 
-disp 'SART time '
-toc
-% ML recosntruction
-% disp 'ML'
-
-% tic
-% [xmlt, costml] = ML_dbt(Gtr,proj,xbp,I0,3,2);
-% disp 'ML time'
+% % temp2 = (deep(:, :, sliceindex) + deep(:, :, sliceindex-1) + deep(:, :, sliceindex+1) + deep(:, :, sliceindex+2) + deep(:, :, sliceindex-2))/5;
+% % %temp3 = (out1(:, :, sliceindex) + out1(:, :, sliceindex-1) + out1(:, :, sliceindex+1) + out1(:, :, sliceindex+2) + out1(:, :, sliceindex-2))/5;
+% % temp3 = (out4(:, :, sliceindex) + out4(:, :, sliceindex-1) + out4(:, :, sliceindex+1) + out4(:, :, sliceindex+2) + out4(:, :, sliceindex-2))/5;
+% % temp4 = (x(:, :, sliceindex) + x(:, :, sliceindex-1) + x(:, :, sliceindex+1) + x(:, :, sliceindex+2) + x(:, :, sliceindex-2))/5;
+% 
+% imshow([deep(:, :, sliceindex)  out4(:, :, sliceindex) xfbp(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex) ]);
+% %imshow([temp0 temp1  temp2 temp3 temp4 ]);
+% 
+% % 
+% % 
+% % sliceindex = 80;
+% % imshow([deep(:, :, sliceindex) out1(:, :, sliceindex) out2(:, :, sliceindex) out3(:, :, sliceindex) out4(:, :, sliceindex) xfbp(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex)]);
+% %imshow([deep(:, :, sliceindex) out1(:, :, sliceindex) out2(:, :, sliceindex) out3(:, :, sliceindex) out4(:, :, sliceindex) xfbp(:, :, sliceindex) xartt(:, :, sliceindex) x(:, :, sliceindex)]);
+% %imshow([reshape(deep(sliceindex, :, :), [224, 160]) reshape(out1(sliceindex, :, :), [224, 160]) reshape(out2(sliceindex, :, :), [224, 160]) reshape(out3(sliceindex, :, :), [224, 160]) reshape(xartt(sliceindex, :, :), [224, 160]) reshape(x(sliceindex, :, :), [224, 160])]);
+% 
+% 
+% disp 'SART time '
 % toc
-
-disp 'Recon completed';
-
-
-%figure('Name', 'dbr_recon_circular_example');
-%imagesc(xartt(:,:, 80)), daspect([1 1 1]), colormap(gray)
-%title 'Slice 30 (lesion focal plane) of SART reconstruction'
-%colorbar;
-
-%save fbp_cir.mat xfbp;
-save sart_cir_zero.mat xartt;
-%save ml_cir.mat xmlt; 
-
+% % ML recosntruction
+% % disp 'ML'
+% 
+% % tic
+% % [xmlt, costml] = ML_dbt(Gtr,proj,xbp,I0,3,2);
+% % disp 'ML time'
+% % toc
+% 
+% disp 'Recon completed';
+% 
+% 
+% %figure('Name', 'dbr_recon_circular_example');
+% %imagesc(xartt(:,:, 80)), daspect([1 1 1]), colormap(gray)
+% %title 'Slice 30 (lesion focal plane) of SART reconstruction'
+% %colorbar;
+% 
+% %save fbp_cir.mat xfbp;
+% save sart_cir_zero.mat xartt;
+%save xfbp_50.mat xfbp;
+% %save ml_cir.mat xmlt; 
+% 
