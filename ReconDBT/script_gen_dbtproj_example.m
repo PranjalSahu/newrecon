@@ -10,19 +10,14 @@
 %Yaffe-1987-pmb-v32-p678-Table1
 mu_fg    = 0.802; % 0.378 @30keV;  0.802 @20keV;
 mu_adp   = 0.456; % 0.264 @30keV; 0.456 @20keV
-mu_carci = 0.87; % carcinoma 0.392 @30keV; 0.844 @20keV;
+mu_carci = 0.85; % carcinoma 0.392 @30keV; 0.844 @20keV;
 mu_ca    = 1.2;   % calcification
 
-fin         = fopen('/media/dril/BackupPlus/lesions/mass_327139370_182.raw');
-lesion_size = 182;
-I   = fread(fin, 182*182*182,'uint8=>uint8');
-Z   = reshape(I, 182, 182, 182);
-Z   = downsample3(Z, 5); 
-Z   = imbinarize(Z);
 
 
 
-for phantomindex=1:1
+
+for phantomindex=1:5
     
      load(strcat(['/media/dril/ubuntudata/DBT-NEW/attenuation_values_cropped/', int2str(phantomindex), '.mat']));
      x = head;
@@ -37,27 +32,27 @@ for phantomindex=1:1
     %x = xartt;
     
     % Insert lesion at random location
-    lesion_flag = 10;%rand;
+    lesion_flag = rand;
     if lesion_flag > 0.3
         disp('Lesion inserted');
         disp(phantomindex);
         
-        lesion_x = randi([200, 300], 1, 1);
-        lesion_y = randi([60,  160], 1, 1);
-        lesion_z = randi([40,  120], 1, 1);
+        lesion_x = randi([400, 600], 1, 1);
+        lesion_y = randi([160,  280], 1, 1);
+        lesion_z = randi([120,  220], 1, 1);
         
-        lesion(lesion_x-18:lesion_x+17, lesion_y-18:lesion_y+17, lesion_z-18:lesion_z+17) = Z;
+        lesion_index  = randi([1, 4]);
+        Z = lesions(:, :, :, lesion_index);
+        
+        lesion(lesion_x-72:lesion_x+71, lesion_y-72:lesion_y+71, lesion_z-72:lesion_z+71) = Z;
         x(lesion==1) = mu_carci;
     end
-    
-    
-    
     
     %===============================    
     %Define the object geometry
     %===============================
     [nx,ny,nz] = size(x);                         % phantom dimensions
-    dx   = 0.02*down; dy=0.02*down; dz=0.02*down; % in cm, phantom pixel sizes
+    dx   = 0.0255; dy=dx; dz=dx; % in cm, phantom pixel sizes
     xfov = dx*nx; % 20;
     yfov = dy*ny;
     zfov = dz*nz;
@@ -76,8 +71,8 @@ for phantomindex=1:1
      dsd = dso+dod; %in cm: dist. from source to the detector
 
      %91.666666
-     orbit = 50;  % angular span
-     na    = 25;         % number of projection views
+     orbit = 91.666666;  % angular span
+     na    = 45;         % number of projection views
      ds    = dx;         % in cm; detector pixel size
      dt    = dx;
      
@@ -86,8 +81,8 @@ for phantomindex=1:1
      %costheta=cos(orbit/2*pi/180); sintheta=sin(orbit/2*pi/180);
      %sfov = ((dso*costheta+dod)*(xfov/2+dso*sintheta)/(dso*costheta+offset_z*dz-zfov/2) - dso*sintheta)*2;
      %tfov = yfov*(dso*costheta+dod)/(dso*costheta+dod-zfov);
-     ns = 800;%ceil(sfov/ds);
-     nt = 300;%ceil(tfov/dt);
+     ns = 1600;%ceil(sfov/ds);
+     nt = 600;%ceil(tfov/dt);
 
      offset_s = 0; %detector center offset along the 's' direction in pixels relative to the tube rotation center
      offset_t = -nt/2; %detector center offset along the 't' direction in pixels relative to the tube rotation center
@@ -112,15 +107,12 @@ for phantomindex=1:1
     
     calcification_flag = rand;
     % add a spherical lesion to the phantom
-    if(0)
+    if(1)
         for k=1:5
             rx=dx*2; ry=dy*2; rz=dz*2;
             % lesion radius
             % define the geometric properties of a sphere
-            ell          = [ig.x(182) ig.y(128) ig.z(150) rx ry rz 0 0 1];      
-            lesion       = ellipsoid_im(ig,ell); % generate the lesion volumes
-            x(lesion==1) = mu_carci;   
-
+            
             % lesion locations
             lesion_x = randi([200, 300], 1, 1);
             lesion_y = randi([80,  140], 1, 1);
@@ -141,11 +133,12 @@ for phantomindex=1:1
     end
     
     %add poisson noise to the projections
-    if(0)
+    if(1)
         [proj_noi, g_noi, g_noi_nonoise, I0] = insert_noise(0.75, g, na);
-        %save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/proj_noi_',     int2str(phantomindex), '.mat']), 'proj_noi', 'I0');
-        %save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/g_noi_',        int2str(phantomindex), '.mat']), 'g_noi');
-        save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/g_noi_sart_',    int2str(phantomindex), '.mat']), 'g_noi_nonoise');
+        save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections-higher/proj_noi_',     int2str(phantomindex), '.mat']), 'proj_noi', 'I0');
+        save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections-higher/g_noi_',        int2str(phantomindex), '.mat']), 'g_noi');
+        save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections-higher/g_noi_nonoise_',int2str(phantomindex), '.mat']), 'g_noi_nonoise');
+        %save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections-higher/g_noi_sart_',    int2str(phantomindex), '.mat']), 'g_noi_nonoise');
         
 %         [proj_noi, g_noi, I0] = insert_noise(1.5, g, na);
 %         save(strcat(['/media/dril/ubuntudata/DBT-NEW/projections-noise/proj_noi_', int2str(phantomindex), '_2.mat']), 'proj_noi', 'I0');
