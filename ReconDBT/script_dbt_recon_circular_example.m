@@ -12,12 +12,14 @@
 %"proj_noi.mat" is for ML reconstruction.
 
 
-for phantomindex=1:176
-    load(strcat(['/media/dril/ubuntudata/DBT-NEW/projections/proj_noi', int2str(phantomindex), '.mat']));
-    load(strcat(['/media/dril/ubuntudata/DBT-NEW/projections/g_noi_', int2str(phantomindex), '.mat']));
+
+
+for phantomindex=101:176
+    load(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/proj_noi_', int2str(phantomindex), '.mat']));
+    load(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/g_noi_',    int2str(phantomindex), '.mat']));
     
-    g   = g_noi;
-    proj= proj_noi;
+    g    = g_noi(:, :, 11:35);
+    proj = proj_noi;
     %==================================
     %User Defines the scanner geometry
     %==================================
@@ -33,11 +35,11 @@ for phantomindex=1:176
                 %'s', the x-ray tube moving direction, positive pointing toward right.           
                 %'t', the perpendicular direction to 's' direction, positive pointing toward the nipple.            
 
-     ns = size(g,1); %number of detector elements in the 's' direction
-     nt = size(g,2); %number of detector elements in the 's' direction
-     offset_s = 0; %detector center offset along the 's' direction in pixels relative to the tube rotation center
-     offset_t = -nt/2; % detector center offset along the 't' direction in pixels relative to the tube rotation center
-     d_objbottom_det = 0;%in cm,the distance from the bottom of the object to the center detector.
+     ns = size(g,1);      % number of detector elements in the 's' direction
+     nt = size(g,2);      % number of detector elements in the 's' direction
+     offset_s = 0;        % detector center offset along the 's' direction in pixels relative to the tube rotation center
+     offset_t = -nt/2;    % detector center offset along the 't' direction in pixels relative to the tube rotation center
+     d_objbottom_det = 0; % in cm,the distance from the bottom of the object to the center detector.
     %=======================================
     %User defines the recon volume geometry:
     %=======================================
@@ -81,24 +83,24 @@ for phantomindex=1:176
             'offset_t', offset_t, ...
             'dso', dso, 'dod', dod, 'dfs',inf);  
 
-    Gtr = Gtomo_syn(btg,igr);
-
-    %xfbp = fbp_dbt(Gtr,btg,igr, g,'hann75');
-
+    Gtr  = Gtomo_syn(btg,igr);
+    xfbp = fbp_dbt(Gtr, btg, igr, g,  'hann50');
+    xfbp = single(xfbp);
+    
     % SART reconstruction
     %xbp = BP(Gtr, g); % initialization for SART
     %disp(size(xbp));
 
-    disp 'SART'
-    tic
-    %[xartt, costart] = SART_dbt(Gtr, g, xbp, 2, 0.15);
-    [xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 2, 0.25);
-    disp 'SART time '
-    toc
+    %disp 'SART'
+    %tic
+    %[xartt, costart] = SART_dbt(Gtr, g, xbp, 5, 0.9);
+    [xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 5, 0.9);
+    %disp 'SART time '
+    %toc
 
     disp 'Recon completed';
 
-    save(strcat(['/media/dril/ubuntudata/DBT-NEW/recons/sart_cir_zero_', int2str(phantomindex), '.mat']), 'xartt');
+    save(strcat(['/media/dril/ubuntudata/DBT-NEW/gan-90-projections/sart_', int2str(phantomindex), '.mat']), 'xartt');
    
 end 
 

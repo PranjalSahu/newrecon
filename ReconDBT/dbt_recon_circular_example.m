@@ -8,15 +8,21 @@
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % load in the projection views.
-% "g_noi.mat" is for FBP and SART reconstruction.
+% "g_noi.mat"    is for FBP and SART reconstruction.
 % "proj_noi.mat" is for ML reconstruction.
 
 load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
 
-load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/11_input.mat;
+%load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/11_input.mat;
+%load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/gan-model1/10_prediction.mat';
+load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_noise_150.mat';
 
-g = double(groundtruth);
+%g = double(prediction);
+g = double(g_noi_nonoise);
+
+%g = g(:, :, 11:35);
+
 load head.mat;
 
 %x    = head;
@@ -42,7 +48,7 @@ proj = proj_noi;
  dsd = dso+dod; %in cm: dist. from source to the detector
 
  
- orbit = 91.666666;     % in degree: angular span
+ orbit = 91.66666;     % in degree: angular span
  na = size(g,3); % number of projection views
  ds = 0.04;      % in cm: detector element pixel size in the 's' direction; 
  dt = 0.04;      % in cm: detector element pixel size in the 's' direction; 
@@ -101,8 +107,19 @@ Gtr = Gtomo_syn(btg, igr);
 
 % FBP reconstruction
 % disp 'FBP'
-xfbp = fbp_dbt(Gtr, btg, igr, g, 'hann50');
+xfbp = fbp_dbt(Gtr, btg, igr, g, 'hann75');
 
+
+
+
+
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_noise_150.mat';
+% a = g_noi_nonoise;
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/gan-model1/10_prediction.mat';
+% b = prediction;
+% b = double(b);
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_150.mat';
+% c = g_noi;
 
 % SART reconstruction
 %xbp = BP(Gtr, g); % initialization for SART
