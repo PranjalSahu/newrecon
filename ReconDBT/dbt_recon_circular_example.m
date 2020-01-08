@@ -7,13 +7,38 @@
 % Feb. 2018
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-%load in the projection views.
-%"g_noi.mat" is for FBP and SART reconstruction.
-%"proj_noi.mat" is for ML reconstruction.
+% load in the projection views.
+% "g_noi.mat"    is for FBP and SART reconstruction.
+% "proj_noi.mat" is for ML reconstruction.
+
 load proj_noi.mat; % the variable is 'proj_noi'.
 load g_noi.mat;    % the variable is 'g_noi'.
-g   = g_noi;
-proj= proj_noi;
+
+%load /media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/11_input.mat;
+%load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/gan-model1/10_prediction.mat';
+load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_noise_150.mat';
+
+%g = double(prediction);
+g = double(g_noi_nonoise);
+
+%g = g(:, :, 11:35);
+
+load head.mat;
+
+%x    = head;
+%down = 2;
+%x    = downsample3(x, down);
+nview = size(g, 3);
+
+
+%for i=1:nview
+%    temp = g(:, :, i);
+%    t    = graythresh(temp);
+%    temp(temp < t) = 0;
+%    g(:, :, i) = temp;  
+%end
+
+proj = proj_noi;
 %==================================
 %User Defines the scanner geometry
 %==================================
@@ -21,19 +46,20 @@ proj= proj_noi;
  dso = 60.5; %in cm: dist. from the source to the rotation center
  dod = 4.5;  %in cm: dist. from the rotation center to the detector
  dsd = dso+dod; %in cm: dist. from source to the detector
+
  
- orbit = 50;  %in degree: angular span
- na = size(g,3); %number of projection views
- ds = 0.04; %in cm: detector element pixel size in the 's' direction; 
- dt = 0.04; %in cm: detector element pixel size in the 's' direction; 
-            %'s', the x-ray tube moving direction, positive pointing toward right.           
-            %'t', the perpendicular direction to 's' direction, positive pointing toward the nipple.            
+ orbit = 91.66666;     % in degree: angular span
+ na = size(g,3); % number of projection views
+ ds = 0.04;      % in cm: detector element pixel size in the 's' direction; 
+ dt = 0.04;      % in cm: detector element pixel size in the 's' direction; 
+                 % 's', the x-ray tube moving direction, positive pointing toward right.           
+                 % 't', the perpendicular direction to 's' direction, positive pointing toward the nipple.            
  
- ns = size(g,1); %number of detector elements in the 's' direction
- nt = size(g,2); %number of detector elements in the 's' direction
- offset_s = 0; %detector center offset along the 's' direction in pixels relative to the tube rotation center
- offset_t = -nt/2; % detector center offset along the 't' direction in pixels relative to the tube rotation center
- d_objbottom_det = 0;%in cm,the distance from the bottom of the object to the center detector.
+ ns       = size(g,1); % number of detector elements in the 's' direction
+ nt       = size(g,2); % number of detector elements in the 's' direction
+ offset_s = 0;         % detector center offset along the 's' direction in pixels relative to the tube rotation center
+ offset_t = -nt/2;     % detector center offset along the 't' direction in pixels relative to the tube rotation center
+ d_objbottom_det = 0;  % in cm,the distance from the bottom of the object to the center detector.
 %=======================================
 %User defines the recon volume geometry:
 %=======================================
@@ -77,39 +103,57 @@ offset_z = (dod - (zfov/2 + d_objbottom_det-drz/2))/drz; %in pixels: offset of t
 		'offset_t', offset_t, ...
   		'dso', dso, 'dod', dod, 'dfs',inf);  
     
-Gtr = Gtomo_syn(btg,igr);
+Gtr = Gtomo_syn(btg, igr);
 
-%FBP reconstruction
-%disp 'FBP'
-%xfbp = fbp_dbt(Gtr,btg,igr, g,'hann75');
+% FBP reconstruction
+% disp 'FBP'
+xfbp = fbp_dbt(Gtr, btg, igr, g, 'hann75');
+
+
+
+
+
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_noise_150.mat';
+% a = g_noi_nonoise;
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/predictions/gan-model1/10_prediction.mat';
+% b = prediction;
+% b = double(b);
+% load '/media/dril/ubuntudata/DBT-NEW/gan-90-projections/projections/g_noi_150.mat';
+% c = g_noi;
 
 % SART reconstruction
-xbp = BP(Gtr, g); % initialization for SART
-disp(size(xbp));
+%xbp = BP(Gtr, g); % initialization for SART
+%disp(size(xbp));
 
-disp 'SART'
-tic
-[xartt, costart] = SART_dbt(Gtr, g, xbp, 2, 0.15);
-%[xartt, costart] = SART_dbt(Gtr, g, zeros(400, 224, 160), 2, 0.5);
+%xbp = xbp;
 
-disp 'SART time '
-toc
-% ML recosntruction
-% disp 'ML'
-% tic
-% [xmlt, costml] = ML_dbt(Gtr,proj,xbp,I0,3,2);
-% disp 'ML time'
+%disp 'SART'
+%tic
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, xbp, 5, 0.9, 1);
+%[xartt, costart, diff_image_final, back_proj_images] = SART_dbt(Gtr,  g, zeros(size(xbp)), 5, 0.9, 1);
+
+% total_mask1 = mask1+mask2+mask3+mask4;
+% total_mask1(total_mask1 ~= 0) = 1;
+ 
+
+
+ 
+% disp 'SART time '
 % toc
-
-disp 'Recon completed';
-
-
-figure('Name', 'dbr_recon_circular_example');
-imagesc(xartt(end:-1:1,:,30)), daspect([1 1 1]), colormap(gray)
-title 'Slice 30 (lesion focal plane) of SART reconstruction'
-colorbar;
-
-%save fbp_cir.mat xfbp;
-save sart_cir_zero.mat xartt;
-%save ml_cir.mat xmlt; 
-
+% % ML recosntruction
+% % disp 'ML'
+% 
+% % tic
+% % [xmlt, costml] = ML_dbt(Gtr,proj,xbp,I0,3,2);
+% % disp 'ML time'
+% % toc
+% 
+% disp 'Recon completed';
+ 
+ 
+ 
+% %save fbp_cir.mat xfbp;
+% save sart_cir_zero.mat xartt;
+%save xfbp_50.mat xfbp;
+% %save ml_cir.mat xmlt; 
+% 
