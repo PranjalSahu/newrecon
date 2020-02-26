@@ -2899,7 +2899,8 @@ for delta in delta_array:
                 d_prj_buf_sub = cuda.to_device(d_prj_buf_sub)
 
         host_est = d_est.copy_to_host()
-        host_est.astype('float16').tofile('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw')
+        np.save('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw', host_est.astype('float16'))
+        #host_est.astype('float16').tofile('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw')
 
 
 # In[ ]:
