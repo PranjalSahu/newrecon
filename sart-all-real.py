@@ -2659,7 +2659,7 @@ projection_name = "CE18"#"CE26.3584x1000."#"OSTR_LE.3584x1400."
 
 IMGSIZx = 3000
 IMGSIZy = 1200
-IMGSIZz = 48
+IMGSIZz = 40
 f_size  = IMGSIZx*IMGSIZy*IMGSIZz
 
 BINSx   = 3584
@@ -2670,16 +2670,20 @@ Vsize_x = 0.085
 Vsize_y = 0.085
 Vsize_z = 1
 
-x_p0    = -116.25
-y_p0    = -115.1
+x_p0    = -IMGSIZx*0.5*Vsize_x #-127.5#-116.25
+y_p0    = -IMGSIZy*Vsize_y+20     #-85#-115.1
 z_p0    = -30.0
 
-x_d0    = -152.32
-y_d0    = -137.7
 
 Bsize_x = 0.085
 Bsize_y = 0.085
 b_size  = BINSx*BINSy
+
+
+x_d0    = -BINSx*0.5*Bsize_x#-152.32
+y_d0    = -BINSy*Bsize_y#-136#-289.36
+
+
 
 ANGLES  = 25
 index   = []
@@ -2702,19 +2706,19 @@ IO_Iter = 0
 method  = 0
 
 
-BACKPRJ_ThreX = 450
+BACKPRJ_ThreX = 600
 BACKPRJ_ThreY = 1
-BACKPRJ_GridX = 1000
-BACKPRJ_GridY = 48
-nBatchXdim    = 8
+BACKPRJ_GridX = 1200
+BACKPRJ_GridY = 40
+nBatchXdim    = 5
 
 nBatchBINSx = 1
 nBatchBINSy = 1
 
-PRJ_ThreX = 16
-PRJ_ThreY = 16
-PRJ_GridX = 224
-PRJ_GridY = 100
+PRJ_ThreX = 32
+PRJ_ThreY = 5
+PRJ_GridX = 112
+PRJ_GridY = 320
 
 
 f_size     = IMGSIZx*IMGSIZy*IMGSIZz
@@ -2802,7 +2806,7 @@ delta_array      = [0.0005]#[0.0001, 0.0002, 0.0003, 0.0005, 0.0006, 0.0007, 0.0
 beta_array       = []
 #beta_array.append(0)
 
-np.random.seed(int(proji))
+np.random.seed(int(proji)*100)
 for i in range(8):
     beta_array.append(np.random.uniform(0.11, 0.69))
 beta_array       = -1*np.around(beta_array, decimals=3)
@@ -2899,8 +2903,8 @@ for delta in delta_array:
                 d_prj_buf_sub = cuda.to_device(d_prj_buf_sub)
 
         host_est = d_est.copy_to_host()
-        np.save('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw', host_est.astype('float16'))
-        #host_est.astype('float16').tofile('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw')
+        #np.save('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw', host_est.astype('float16'))
+        host_est.astype('float32').tofile('/media/dril/My Passport/REAL-DBT-PROJECTIONS/RECONS/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'.raw')
 
 
 # In[ ]:
