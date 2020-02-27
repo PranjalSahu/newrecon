@@ -2671,7 +2671,7 @@ Vsize_y = 0.085
 Vsize_z = 1
 
 x_p0    = -IMGSIZx*0.5*Vsize_x #-127.5#-116.25
-y_p0    = -IMGSIZy*Vsize_y+20     #-85#-115.1
+y_p0    = -IMGSIZy*Vsize_y#+10     #-85#-115.1
 z_p0    = -30.0
 
 
