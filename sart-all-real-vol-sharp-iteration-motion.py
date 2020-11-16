@@ -1339,21 +1339,33 @@ def SART_prj_diff(prjbuf, prj_est, normprj):
     
     return result_diff_line
 
+@njit(parallel=True)
+def BACK_prj_diff(prjbuf, prj_est):
+    # diff_line variable is not used in this function
+    result_diff_line = np.zeros(prjbuf.shape)
+    
+    #for nbBinsX in prange(nBatchBINSx):
+    #    for nbBinsY in prange(nBatchBINSy):
+    for bin_ind in prange(prjbuf.shape[0]):
+        result_diff_line[bin_ind] = prjbuf[bin_ind] + prj_est[bin_ind]
+        if(result_diff_line[bin_ind] < 0):
+            result_diff_line[bin_ind] = 0    
+    return result_diff_line
 
 #@cuda.jit
-def bprojectCB_4B_GPU_R_SART(d_objbuf, d_prjbuf, d_prior, d_index, 
+def bprojectCB_4B_GPU_R_SART(d_objbuf, d_objbuf_new, d_prjbuf, d_prior, d_index, 
                                    d_angles, angleStart, angleEnd, lambda_parameter, beta):
     BACKPRJ_THREAD = BACKPRJ_ThreX, BACKPRJ_ThreY
     BACKPRJ_GRID   = BACKPRJ_GridX, BACKPRJ_GridY
     
     for nbatchIDx in range(nBatchXdim):
-        backprj_OSSART_gpu_manyviews_R[BACKPRJ_GRID, BACKPRJ_THREAD](d_objbuf, d_prjbuf, d_prior, d_index, 
+        backprj_OSSART_gpu_manyviews_R[BACKPRJ_GRID, BACKPRJ_THREAD](d_objbuf, d_objbuf_new, d_prjbuf, d_prior, d_index, 
                                                                             d_angles, angleStart, angleEnd , nbatchIDx, lambda_parameter, beta)
         cuda.synchronize()
     return
 
 @cuda.jit
-def backprj_OSSART_gpu_manyviews_R(d_objbuf, d_prjbuf, d_prior, d_index, d_angles, 
+def backprj_OSSART_gpu_manyviews_R(d_objbuf, d_objbuf_new, d_prjbuf, d_prior, d_index, d_angles, 
                                           angleStart, angleEnd, nbatchIDx, lambda_parameter, beta):
     bx = cuda.blockIdx.x
     by = cuda.blockIdx.y
@@ -1467,11 +1479,9 @@ def backprj_OSSART_gpu_manyviews_R(d_objbuf, d_prjbuf, d_prior, d_index, d_angle
     if(total_sensitivity != 0):
         u_term    = (total_sum/total_sensitivity)
         beta_term = (beta*d_prior[ind_voxel])/total_sensitivity
-    
-    d_objbuf[ind_voxel] = d_objbuf[ind_voxel]+lambda_parameter*(u_term+beta_term)
-    if(d_objbuf[ind_voxel] < 0):
-        d_objbuf[ind_voxel] = 0
-    #if(d_objbuf[ind_voxel] > 0.1):
+        
+    d_objbuf_new[ind_voxel] = lambda_parameter*(u_term+beta_term)
+    #if(d_objbuf[ind_voxel] < 0):
     #    d_objbuf[ind_voxel] = 0
     
     return
@@ -2417,7 +2427,7 @@ def load_prj_ima_all(breast_type, path):
         # Sharpening filter
         if(1):
             print('Testing')
-            #temp = unsharp_mask(temp, radius=3, amount=1, preserve_range=True)
+            #temp = unsharp_mask(temp, radius=3, amount=0.2, preserve_range=True)
             #print('max is ', np.max(temp.flatten()), ' Min is ', np.min(temp.flatten()))
             #if np.max(temp.flatten()) > 5000:
             #   print('max is ', np.max(temp.flatten()), ' Min is ', np.min(temp.flatten()))
@@ -2579,10 +2589,10 @@ def load_prj_std(data_type):
 
 
 def sharpen_volume(vol):
-  temp = np.reshape(vol, [64, 1400, 3600]) 
-  for i in range(64):
+  temp = np.reshape(vol, [48, 1400, 3600]) 
+  for i in range(48):
     a = temp[i]
-    a = unsharp_mask(a, radius=[3, 0.001], amount=1, preserve_range=True)
+    a = unsharp_mask(a, radius=[3, 0.001], amount=3, preserve_range=True)
     temp[i] = a
   temp = temp.flatten()
   return temp
@@ -2593,7 +2603,7 @@ projection_name = "CE18"#"CE26.3584x1000."#"OSTR_LE.3584x1400."
 
 IMGSIZx = 3600
 IMGSIZy = 1400
-IMGSIZz = 64
+IMGSIZz = 48
 f_size  = IMGSIZx*IMGSIZy*IMGSIZz
 
 BINSx   = 3584
@@ -2643,7 +2653,7 @@ method  = 0
 BACKPRJ_ThreX = 600
 BACKPRJ_ThreY = 1
 BACKPRJ_GridX = 1400
-BACKPRJ_GridY = 64
+BACKPRJ_GridY = 48
 nBatchXdim    = 8
 
 nBatchBINSx = 1
@@ -2711,14 +2721,18 @@ host_prj_allangle_backup, h_angles   = load_prj_ima_all(breast_type, pt)
 #host_prj_allangle_backup, h_angles   = load_prj_duke("left", 1, 1)
 
 h_angles  = list(h_angles)
-h_angles1 = list(np.array(h_angles)-0.00174533)
-h_angles2 = list(np.array(h_angles)+0.00174533)
+h_angles1 = list(np.array(h_angles)-2*0.0008726646)
+h_angles2 = list(np.array(h_angles)+2*0.0008726646)
+#h_angles3 = list(np.array(h_angles)+0.0008726646)
+#h_angles4 = list(np.array(h_angles)+2*0.0008726646)
 
 h_index   = np.array(list(range(0, 25)))
 
 d_angles  = cuda.to_device(h_angles)
 d_angles1 = cuda.to_device(h_angles1)
 d_angles2 = cuda.to_device(h_angles2)
+#d_angles3 = cuda.to_device(h_angles3)
+#d_angles4 = cuda.to_device(h_angles4)
 
 d_index  = cuda.to_device(h_index)
 
@@ -2751,7 +2765,7 @@ print(h_angles)
 sub_b_size     = ANGLES_per_sub*b_size
 
 delta_array      = [0.0005]#[0.0001, 0.0002, 0.0003, 0.0005, 0.0006, 0.0007, 0.001]
-beta_array       = [0.25]
+beta_array       = [0.3]
 #np.random.seed(int(proji)*15)
 #for i in range(4):
 #    beta_array.append(np.random.uniform(0.01, 0.5))
@@ -2770,6 +2784,8 @@ print(beta_array)
 
 #0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0]#[-0.7, -0.5, -0.3, -0.1, 0]
 lambda_parameter = 0.9
+
+start_time = time.time()
 
 for delta in delta_array:
     for beta in beta_array:
@@ -2828,8 +2844,12 @@ for delta in delta_array:
                     d_prj_est_sub = cuda.to_device(d_prj_est_sub)
                     if tr == 0:
                         d_anglesp = d_angles1
-                    else:
+                    elif tr ==1:
                         d_anglesp = d_angles2
+                    elif tr == 2:
+                        d_anglesp = d_angles3
+                    elif tr == 3:
+                        d_anglesp = d_angles4
                     fprojectCB_1R_GPU_SART_cos(
 		            d_est,
 		            d_prj_est_sub,
@@ -2844,30 +2864,68 @@ for delta in delta_array:
                 h_prj_est_sub = h_prj_est_sub/3.0
                 
                 # Numba CPU code to do difference                 
-                result_diff      = SART_prj_diff(host_prj_sub, h_prj_est_sub, h_normprj_sub)
-                
+                result_diff     = SART_prj_diff(host_prj_sub, h_prj_est_sub, h_normprj_sub)
                 d_diff_line_sub = cuda.to_device(result_diff)
                 
-                bprojectCB_4B_GPU_R_SART (d_est, d_diff_line_sub, d_prior,
+                h_est_new_temp   = np.zeros(f_size, np.float32)
+                d_est_new        = cuda.to_device(h_est_new_temp)
+                bprojectCB_4B_GPU_R_SART (d_est, d_est_new, d_diff_line_sub, d_prior,
                                           d_index,
                                           d_angles,
                                           angleStart,
                                           angleEnd,
                                           lambda_parameter, beta)
+                host_est = d_est_new.copy_to_host()
+                
+                ######################################################################		
+                # Second and Third set of Back-Projections 
+                for tr in range(2):
+                    h_est_new_temp   = np.zeros(f_size, np.float32)
+                    d_est_new        = cuda.to_device(h_est_new_temp)
+                    if tr == 0:
+                        d_anglesp = d_angles1
+                    elif tr == 1:
+                        d_anglesp = d_angles2
+                    elif tr == 2:
+                        d_anglesp = d_angles3
+                    elif tr == 3:
+                        d_anglesp = d_angles4
+                    
+                    bprojectCB_4B_GPU_R_SART (d_est, d_est_new, d_diff_line_sub, d_prior,
+                                          d_index,
+                                          d_anglesp,
+                                          angleStart,
+                                          angleEnd,
+                                          lambda_parameter, beta)                    
+                    host_est    = host_est + d_est_new.copy_to_host()
+                
+                # Take mean of Back-Projections after 3 angles
+                host_est     = host_est/3.0
+                host_est_old = d_est.copy_to_host()
+                h_est_new    = BACK_prj_diff(host_est, host_est_old)
+                 
+                d_est        = cuda.to_device(h_est_new)
                 
                 d_prj_est_sub = np.zeros(d_prj_est_sub.shape)
                 d_prj_est_sub = cuda.to_device(d_prj_est_sub)
 
                 d_normprj_sub = np.zeros(d_normprj_sub.shape)
                 d_normprj_sub = cuda.to_device(d_normprj_sub)
-              
+            # sharpen volume after each iteration
+            if i == 0:
+                temp1 = d_est.copy_to_host()
+                temp1 = sharpen_volume(temp1)
+                d_est = cuda.to_device(temp1)
+        
         host_est = d_est.copy_to_host()
         #np.save('/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji), host_est.astype('float16'))
-        save_path  = '/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'_temp_1-x-3-0.001-3-projections.raw'
+        save_path  = '/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji)+'_temp_1-x-3-0.001-3-projections5-three-sharp.raw'
         print('Save Path is ', save_path)
         host_est.astype('float32').tofile(save_path)
 
+end_time = time.time()
 
+print('Total Time is ', end_time-start_time)
 
 
 
