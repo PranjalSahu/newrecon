@@ -1496,9 +1496,12 @@ def backprj_OSSART_gpu_manyviews_R(d_objbuf, d_prjbuf, d_prior, d_index, d_angle
     
     if(total_sensitivity != 0):
         u_term    = (total_sum/total_sensitivity)
-        beta_term = (beta*d_prior[ind_voxel])/total_sensitivity
+        #beta_term = (beta*d_prior[ind_voxel])/total_sensitivity
+        # Get the remainder to be added along with the back-projected difference
+        beta_term = beta*(d_prior[ind_voxel] - d_objbuf[ind_voxel] - u_term)/total_sensitivity
     
     d_objbuf[ind_voxel] = d_objbuf[ind_voxel]+lambda_parameter*(u_term+beta_term)
+    
     if(d_objbuf[ind_voxel] < 0):
         d_objbuf[ind_voxel] = 0
     #if(d_objbuf[ind_voxel] > 0.1):
@@ -2705,7 +2708,7 @@ print("BETA array")
 #    beta_array.append(np.random.uniform(0.25, 0.5))
 #    #beta_array.append(np.random.uniform(0.05, 0.5))
 beta_array       = [0.5]# 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]#[float(proji)] 
-beta_array       = -1*np.around(beta_array, decimals=3)
+#beta_array       = -1*np.around(beta_array, decimals=3)
 print("BETA array")
 print(beta_array)
 
@@ -2749,8 +2752,11 @@ for delta in delta_array:
 
                 d_prior       = np.zeros(f_size, np.float32)
                 d_prior       = cuda.to_device(d_prior)
-
-                prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
+                
+                if i == 0 and a == 0:
+                    print('First Sub Iteration, skipping Prior Calculation')
+                else:
+                    prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
 
                 fprojectCB_1R_GPU_SART_cos(
                     d_est,
