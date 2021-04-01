@@ -1064,6 +1064,7 @@ def ray_trace_gpu_manyangles_direct_notexturememory_OSTR_cos(d_objbuf, d_prjbuf,
 def ray_trace_gpu_manyangles_direct_notexturememory_cos(d_objbuf, d_prjbuf, d_normprj, d_angles, d_index, angleStart, angleEnd, nbBinsX, nbBinsY):
     ix, iy   = cuda.grid(2)
     status   = 0
+    status2  = 0
     
     for a in range(angleStart, angleEnd):
         #print(a)
@@ -1498,9 +1499,9 @@ def backprj_OSSART_gpu_manyviews_R(d_objbuf, d_prjbuf, d_prior, d_index, d_angle
         u_term    = (total_sum/total_sensitivity)
         #beta_term = (beta*d_prior[ind_voxel])/total_sensitivity
         # Get the remainder to be added along with the back-projected difference
-        beta_term = beta*(d_prior[ind_voxel] - d_objbuf[ind_voxel] - u_term)/total_sensitivity
+        beta_term = beta*d_prior[ind_voxel]/total_sensitivity
     
-    d_objbuf[ind_voxel] = d_objbuf[ind_voxel]+lambda_parameter*(u_term+beta_term)
+    d_objbuf[ind_voxel] = d_objbuf[ind_voxel]+lambda_parameter*(u_term)#+beta_term)
     
     if(d_objbuf[ind_voxel] < 0):
         d_objbuf[ind_voxel] = 0
@@ -1676,23 +1677,20 @@ def G_Fessler_prior(RDD, RD, estbuf, delta, z_xy_ratio, nbatchIDx):
                 cent = 1 # reset cent
     return
 
-mlp_coefs_0_orig      = np.load('/home/pranjal/SEMISUNET/mlp_coefs_0.npy')
-mlp_coefs_1_orig      = np.load('/home/pranjal/SEMISUNET/mlp_coefs_1.npy')
-mlp_intercepts_0_orig = np.load('/home/pranjal/SEMISUNET/mlp_intercepts_0.npy')
-mlp_intercepts_1_orig = np.load('/home/pranjal/SEMISUNET/mlp_intercepts_1.npy')
-
-mlp_coefs_0_orig       = cuda.to_device(mlp_coefs_0_orig)
-mlp_coefs_1_orig       = cuda.to_device(mlp_coefs_1_orig)
-mlp_intercepts_0_orig  = cuda.to_device(mlp_intercepts_0_orig)
-mlp_intercepts_1_orig  = cuda.to_device(mlp_intercepts_1_orig)
-
-
-print('Cuda size are ', mlp_coefs_0_orig.shape, mlp_coefs_1_orig.shape, mlp_intercepts_0_orig.shape, mlp_intercepts_1_orig.shape)
 
 LOCAL_ARRAY_SIZE = 125
 
-@cuda.jit
+@cuda.jit(debug=True)
 def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1, nbatchIDx):
+    check_x, check_y, check_z = cuda.grid(3)
+    ind_x = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+    ind_y = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y
+    ind_z = cuda.blockIdx.z * cuda.blockDim.z + cuda.threadIdx.z
+    
+    ind_voxel = int((ind_z*IMGSIZy+ind_y)*IMGSIZx+ind_x)
+    if ind_voxel >= IMGSIZx*IMGSIZy*IMGSIZz:
+        return
+    """
     bx = cuda.blockIdx.x
     by = cuda.blockIdx.y
     
@@ -1700,7 +1698,6 @@ def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, m
     tx = cuda.threadIdx.x + (nbatchIDx*cuda.blockDim.x)
     ty = cuda.threadIdx.y
     
-    cent = 1
     tid  = tx
     
     # Calculate the index of the voxel being considered
@@ -1711,61 +1708,77 @@ def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, m
     
     ind_voxel = int((ind_z*IMGSIZy+ind_y)*IMGSIZx+ind_x)  #(if prj is scanner data, need x_y_flip)
     #ind_voxel=(ind_z*IMGSIZx+ind_x)*IMGSIZy+ind_y;
-    temp_result = cuda.local.array(LOCAL_ARRAY_SIZE, dtype=numba.float32)
+    temp_result = cuda.local.array(25, dtype=numba.float32)
     temp_voxels = cuda.local.array(LOCAL_ARRAY_SIZE, dtype=numba.float32)
     
     counter     = 0
-    for ind_nr_z  in range(ind_z-1, ind_z+2):
-        for ind_nr_y in range(ind_y-1, ind_y+2):
-            for ind_nr_x in range(ind_x-1, ind_x+2):
-                distance = math.sqrt(float((ind_nr_x-ind_x)*(ind_nr_x-ind_x)+(ind_nr_y-ind_y)*(ind_nr_y-ind_y)+30*(ind_nr_z-ind_z)*(ind_nr_z-ind_z)))
+    sum1        = 0
+    for ind_nr_z  in range(ind_z-2, ind_z+3):
+        for ind_nr_y in range(ind_y-2, ind_y+3):
+            for ind_nr_x in range(ind_x-2, ind_x+3):
+                #distance = math.sqrt(float((ind_nr_x-ind_x)*(ind_nr_x-ind_x)+(ind_nr_y-ind_y)*(ind_nr_y-ind_y)+30*(ind_nr_z-ind_z)*(ind_nr_z-ind_z)))
                 
-                if (distance == 0.0):
-                    distance = 1.0
+                #if (distance == 0.0):
+                #    distance = 1.0
                 
                 if ( ind_nr_x<0  or ind_nr_y<0 or ind_nr_z<0 or ind_nr_x>(IMGSIZx-1) or ind_nr_y>(IMGSIZy-1) or ind_nr_z>(IMGSIZz-1) ):
                     ind_nr = int(ind_voxel)
                 else:
                     ind_nr = int(ind_nr_x + ind_nr_y*IMGSIZx + ind_nr_z*IMGSIZx*IMGSIZy)
                 
+                if ind_nr > 208800000-1:
+                    ind_nr = 208800000-1
+                elif ind_nr < 0:
+                    ind_nr = 0
+                
                 temp_voxels[counter] = estbuf[ind_nr]
+                sum1                 = sum1 + estbuf[1000]#temp_voxels[counter]
                 counter              = counter+1
                 #diff          = estbuf[ind_voxel]-estbuf[ind_nr]
                 #weight_factor = math.exp(-(diff/delta)*(diff/delta))
                 #priorbuf[ind_voxel] = priorbuf[ind_voxel] + diff*weight_factor/distance
-    
+    """
     # Perform MLP based regularization
-    # 1st layer
-    for i in range(LOCAL_ARRAY_SIZE):
-        ans  = 0
-        for j in range(LOCAL_ARRAY_SIZE):
-            ans = ans + temp_voxels[j]*mlp_coefs_0[j][i]
-        temp_result[i] = ans
-    
-    for i in range(LOCAL_ARRAY_SIZE):
-        temp_result[i] = temp_result[i] + mlp_intercepts_0[i]
-        temp_result[i] = math.tanh(temp_result[i])
+    # 1st layer and 2nd layer combined
+    #ans1 = 0
+    #for j in range(25):
+    #    ans  = 0
+    #    for i in range(LOCAL_ARRAY_SIZE):
+    #        ans = ans + temp_voxels[i]*mlp_coefs_0[i][j]
+    #    temp_result[j]      = ans
+    #    temp_result[j]      = temp_result[j] + mlp_intercepts_0[j]
+    #    temp_result[j]      = math.tanh(temp_result[j])
+    #    
+    #    # 2nd layer
+    #    temp_result[j]      = temp_result[j]*mlp_coefs_1[j][0]
+    #    ans1                = ans1 + temp_result[j] 
+    #    #priorbuf[ind_voxel] = priorbuf[ind_voxel] + temp_result[i]
     
     # 2nd layer
-    for i in range(LOCAL_ARRAY_SIZE):
-        temp_result[i]      = temp_result[i]*mlp_coefs_1[i][0]
-        priorbuf[ind_voxel] = priorbuf[ind_voxel] + temp_result[i]
+    #for i in range(LOCAL_ARRAY_SIZE):
+    #    temp_result[i]      = temp_result[i]*mlp_coefs_1[i][0]
+    #    priorbuf[ind_voxel] = priorbuf[ind_voxel] + temp_result[i]
     
-    priorbuf[ind_voxel] =  priorbuf[ind_voxel] + mlp_intercepts_1[0]
+    #priorbuf[ind_voxel]  = temp_result[0]#ans1 + mlp_intercepts_1[0]
+    
+    estbuf[ind_voxel]    =  ind_z#estbuf[ind_voxel]#priorbuf[ind_voxel] + mlp_intercepts_1[0]
+    #estbuf[ind_voxel]   =  sum1#ind_voxel#sum1/125.0#ans1 + mlp_intercepts_1[0]
     return    
 
 def prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1):
-    BACKPRJ_THREAD = BACKPRJ_ThreX, BACKPRJ_ThreY
-    BACKPRJ_GRID   = BACKPRJ_GridX, BACKPRJ_GridY
+    BACKPRJ_THREAD = (8, 8, 2)#BACKPRJ_ThreX, BACKPRJ_ThreY
+    BACKPRJ_GRID   = (400, 160, 29)#BACKPRJ_GridX, BACKPRJ_GridY
     
     if (delta == 0):
         print("delta cannot be ZERO !!")
         exit(1)
     
-    for nbatchIDx in range(0, nBatchXdim):
-        G_Huber_prior_sart[BACKPRJ_GRID, BACKPRJ_THREAD](d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1, nbatchIDx)
-        # Check out the content of this kernel in file ConebeamCT_kernel.cu
-        cuda.synchronize()
+    #for nbatchIDx in range(0, nBatchXdim):
+    #    G_Huber_prior_sart[BACKPRJ_GRID, BACKPRJ_THREAD](d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1, nbatchIDx)
+    #    # Check out the content of this kernel in file ConebeamCT_kernel.cu
+    #    cuda.synchronize()
+    nbatchIDx = 0
+    G_Huber_prior_sart[BACKPRJ_GRID, BACKPRJ_THREAD](d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1, nbatchIDx)
     return
 
 def prior_GPU_OSTR(d_RDD, d_RD, d_est, delta, z_xy_ratio):
@@ -2537,8 +2550,8 @@ def sharpen_volume(vol):
 projection_name = "CE18"#"CE26.3584x1000."#"OSTR_LE.3584x1400."
 sharp_amount = 1
 
-IMGSIZx = 3000
-IMGSIZy = 1200
+IMGSIZx = 3200
+IMGSIZy = 1280
 IMGSIZz = 58
 f_size  = IMGSIZx*IMGSIZy*IMGSIZz
 
@@ -2586,10 +2599,12 @@ IO_Iter = 0
 method  = 0
 
 
-BACKPRJ_ThreX = 600
+BACKPRJ_ThreX = 640
 BACKPRJ_ThreY = 1
-BACKPRJ_GridX = 1200
+BACKPRJ_GridX = 1280
 BACKPRJ_GridY = IMGSIZz
+
+
 nBatchXdim    = 5
 
 nBatchBINSx = 1
@@ -2664,9 +2679,8 @@ print(projection_name, breast_type, proji)
 
 host_prj_allangle_backup, h_angles   = load_prj_duke("left", int(proji), 68)
 
-h_angles = list(h_angles)
-
-h_index   = np.array(list(range(0, 25)))
+h_angles = np.array(list(h_angles))
+h_index  = np.array(list(range(0, 25)))
 
 d_angles = cuda.to_device(h_angles)
 d_index  = cuda.to_device(h_index)
@@ -2707,13 +2721,13 @@ print("BETA array")
 #for i in range(4):
 #    beta_array.append(np.random.uniform(0.25, 0.5))
 #    #beta_array.append(np.random.uniform(0.05, 0.5))
-beta_array       = [0.5]# 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]#[float(proji)] 
-#beta_array       = -1*np.around(beta_array, decimals=3)
+beta_array       = [0.1]# 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]#[float(proji)] 
+beta_array       = -1*np.around(beta_array, decimals=3)
 print("BETA array")
 print(beta_array)
 
 #0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0]#[-0.7, -0.5, -0.3, -0.1, 0]
-lambda_parameter = 1#0.9
+lambda_parameter = 1
 
 for delta in delta_array:
     for beta in beta_array:
@@ -2753,11 +2767,6 @@ for delta in delta_array:
                 d_prior       = np.zeros(f_size, np.float32)
                 d_prior       = cuda.to_device(d_prior)
                 
-                if i == 0 and a == 0:
-                    print('First Sub Iteration, skipping Prior Calculation')
-                else:
-                    prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
-
                 fprojectCB_1R_GPU_SART_cos(
                     d_est,
                     d_prj_est_sub,
@@ -2795,6 +2804,25 @@ for delta in delta_array:
                                           angleEnd,
                                           lambda_parameter, beta)
                 
+                #if i == 0 and a == 0:
+                #    print('First Sub Iteration, skipping Prior Calculation')
+                #else:
+                mlp_coefs_0_orig      = np.load('/home/pranjal/SEMISUNET/mlp_coefs'+str(a)+'_0.npy')
+                mlp_coefs_1_orig      = np.load('/home/pranjal/SEMISUNET/mlp_coefs'+str(a)+'_1.npy')
+                mlp_intercepts_0_orig = np.load('/home/pranjal/SEMISUNET/mlp_intercepts'+str(a)+'_0.npy')
+                mlp_intercepts_1_orig = np.load('/home/pranjal/SEMISUNET/mlp_intercepts'+str(a)+'_1.npy')
+
+                mlp_coefs_0_orig       = cuda.to_device(mlp_coefs_0_orig)
+                mlp_coefs_1_orig       = cuda.to_device(mlp_coefs_1_orig)
+                mlp_intercepts_0_orig  = cuda.to_device(mlp_intercepts_0_orig)
+                mlp_intercepts_1_orig  = cuda.to_device(mlp_intercepts_1_orig)
+                
+                d_prior       = np.zeros(f_size, np.float32)
+                d_prior       = cuda.to_device(d_prior)
+                
+                # Post Process Using MLP regularizer
+                prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
+                
                 #temp1 = d_est.copy_to_host()
                 # sharpen the volume
                 #temp1 = sharpen_volume(temp1)
@@ -2816,6 +2844,7 @@ for delta in delta_array:
                 #    d_est = cuda.to_device(temp1)
                 
                 host_est = d_est.copy_to_host()
+                #host_est = d_prior.copy_to_host()
                 #np.save('/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji), host_est.astype('float16'))
                 save_path  = '/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(a)+'_'+str(delta)+'_'+str(beta)+'_'+str(sharp_amount)+'_anistropic_'+givenname+'_1.raw'
                 print('Save Path is ', save_path)
