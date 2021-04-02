@@ -1695,13 +1695,13 @@ def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, m
     
     temp_result = cuda.local.array(25, dtype=numba.float32)
     temp_voxels = cuda.local.array(LOCAL_ARRAY_SIZE, dtype=numba.float32)
-    sum1        = cuda.local.array(2, dtype=numba.float32)
     
     for i in range(LOCAL_ARRAY_SIZE):
         temp_voxels[i] = 0
     
     counter     = 0
-    #sum1        = 0
+    sum1        = 0
+    first_num   = -1
     for ind_nr_z  in range(ind_z-2, ind_z+3):
         for ind_nr_y in range(ind_y-2, ind_y+3):
             for ind_nr_x in range(ind_x-2, ind_x+3):
@@ -1717,13 +1717,8 @@ def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, m
                 
                 if ind_nr >= IMGSIZx*IMGSIZy*IMGSIZz:
                     ind_nr = ind_voxel
-                #elif ind_nr < 0:
-                #    ind_nr = 0
                 
                 temp_voxels[counter] = estbuf[ind_nr]#estbuf[ind_voxel]#estbuf[ind_nr]
-                if temp_voxels[counter] > 1:
-                    continue
-                sum1[0]              = sum1[0] + temp_voxels[counter]#temp_voxels[counter]
                 counter              = counter+1
                 #diff          = estbuf[ind_voxel]-estbuf[ind_nr]
                 #weight_factor = math.exp(-(diff/delta)*(diff/delta))
@@ -1731,28 +1726,22 @@ def G_Huber_prior_sart(priorbuf, estbuf, delta, mlp_coefs_0, mlp_intercepts_0, m
     
     # Perform MLP based regularization
     # 1st layer and 2nd layer combined
-    #ans1 = 0
-    #for j in range(25):
-    #    ans  = 0
-    #    for i in range(LOCAL_ARRAY_SIZE):
-    #        ans = ans + temp_voxels[i]*mlp_coefs_0[i][j]
-    #    temp_result[j]      = ans
-    #    temp_result[j]      = temp_result[j] + mlp_intercepts_0[j]
-    #    temp_result[j]      = math.tanh(temp_result[j])
-    #    
-    #    # 2nd layer
-    #    temp_result[j]      = temp_result[j]*mlp_coefs_1[j][0]
-    #    ans1                = ans1 + temp_result[j] 
+    ans1 = 0
+    for j in range(25):
+        ans  = 0
+        for i in range(LOCAL_ARRAY_SIZE):
+            ans = ans + temp_voxels[i]*mlp_coefs_0[i][j]
+        temp_result[j]      = ans
+        temp_result[j]      = temp_result[j] + mlp_intercepts_0[j]
+        temp_result[j]      = math.tanh(temp_result[j])
+        
+        # 2nd layer
+        temp_result[j]      = temp_result[j]*mlp_coefs_1[j][0]
+        ans1                = ans1 + temp_result[j] 
     #    #priorbuf[ind_voxel] = priorbuf[ind_voxel] + temp_result[i]
     
-    # 2nd layer
-    #for i in range(LOCAL_ARRAY_SIZE):
-    #    temp_result[i]      = temp_result[i]*mlp_coefs_1[i][0]
-    #    priorbuf[ind_voxel] = priorbuf[ind_voxel] + temp_result[i]
     
-    #priorbuf[ind_voxel]  = temp_result[0]#ans1 + mlp_intercepts_1[0]
-    
-    priorbuf[ind_voxel]    =  sum1[0]#estbuf[ind_voxel]#priorbuf[ind_voxel] + mlp_intercepts_1[0]
+    priorbuf[ind_voxel]  = ans1 + mlp_intercepts_1[0]
     #estbuf[ind_voxel]   =  sum1#ind_voxel#sum1/125.0#ans1 + mlp_intercepts_1[0]
     return    
 
@@ -1770,6 +1759,7 @@ def prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coe
     #    cuda.synchronize()
     nbatchIDx = 0
     G_Huber_prior_sart[BACKPRJ_GRID, BACKPRJ_THREAD](d_prior, d_est, delta, mlp_coefs_0, mlp_intercepts_0, mlp_coefs_1, mlp_intercepts_1, nbatchIDx)
+    cuda.synchronize()
     return
 
 def prior_GPU_OSTR(d_RDD, d_RD, d_est, delta, z_xy_ratio):
@@ -2715,7 +2705,7 @@ print("BETA array")
 #for i in range(4):
 #    beta_array.append(np.random.uniform(0.25, 0.5))
 #    #beta_array.append(np.random.uniform(0.05, 0.5))
-beta_array       = [0.1]# 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]#[float(proji)] 
+beta_array       = [0]# 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4]#[float(proji)] 
 beta_array       = -1*np.around(beta_array, decimals=3)
 print("BETA array")
 print(beta_array)
@@ -2815,8 +2805,7 @@ for delta in delta_array:
                 d_prior       = cuda.to_device(d_prior)
                 
                 # Post Process Using MLP regularizer
-                host_est = d_est.copy_to_host()
-                prior_GPU_SART(d_prior, host_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
+                prior_GPU_SART(d_prior, d_est, delta, mlp_coefs_0_orig, mlp_intercepts_0_orig, mlp_coefs_1_orig, mlp_intercepts_1_orig)
                 
                 #temp1 = d_est.copy_to_host()
                 # sharpen the volume
@@ -2839,6 +2828,7 @@ for delta in delta_array:
                 #    d_est = cuda.to_device(temp1)
                 
                 host_est = d_prior.copy_to_host()
+                d_est    = cuda.to_device(host_est)
                 #host_est = d_prior.copy_to_host()
                 #np.save('/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(delta)+'_'+str(beta)+'_'+str(proji), host_est.astype('float16'))
                 save_path  = '/media/pranjal/BackupPlus/REAL-DBT-PROJECTIONS/RECONS-HUBER/'+projection_name+'_'+str(IMGSIZx)+'x'+str(IMGSIZy)+'x'+str(IMGSIZz)+'.'+str(i)+'_'+str(a)+'_'+str(delta)+'_'+str(beta)+'_'+str(sharp_amount)+'_anistropic_'+givenname+'_1.raw'
